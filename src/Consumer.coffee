@@ -23,7 +23,7 @@ class Consumer extends Base
 				if request.payload? then args.push(request.payload)
 				args.push (err, result) =>
 					response = {id: request.id, err: err, result: result}
-					@redis.data.publish @key(@channel, 'response'), @pack(response)
+					@redis.data.publish @key(@channel, 'response', request.id), @pack(response)
 					
 				@emit.apply(this, args)
 				process.nextTick(next)
