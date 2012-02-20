@@ -9,7 +9,7 @@ class Base extends events.EventEmitter
 			data:   redis.createClient @config.port, @config.host
 		@redis.events.on 'message', @onMessage
 	
-	onMessage: ->
+	onMessage: =>
 	
 	key: (args...) ->
 		args.unshift @config.namespace

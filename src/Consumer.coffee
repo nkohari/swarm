@@ -18,13 +18,14 @@ class Consumer extends Base
 				return if err?
 				request = @unpack(data)
 				return unless request?
-				@emit 'request', request.data, (err, result) =>
-					response =
-						id:     request.id
-						status: if err? then 'failure' else 'success'
-						err:    err
-						result: result
+				
+				args = [request.command]
+				if request.payload? then args.push(request.payload)
+				args.push (err, result) =>
+					response = {id: request.id, err: err, result: result}
 					@redis.data.publish @key(@channel, 'response'), @pack(response)
+					
+				@emit.apply(this, args)
 				process.nextTick(next)
 		next()
 		

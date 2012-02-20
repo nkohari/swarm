@@ -6,13 +6,13 @@ swarm.configure
 	namespace: 'test'
 
 producer = swarm.createProducer()
-consumer = swarm.createConsumer('add')
+consumer = swarm.createConsumer('math')
 
-consumer.on 'request', (items, callback) ->
+consumer.on 'add', (items, callback) ->
 	console.log "doing the work"
 	sum = 0
 	sum += item for item in items
 	callback null, sum
 
-producer.queue 'add', [2, 3, 4], (err, result) ->
+producer.queue 'math', 'add', [2, 3, 4], (err, result) ->
 	console.log "The result was #{result}"
