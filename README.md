@@ -61,13 +61,13 @@ This function will queue a request for processing by one or more consumers.
 
 When requests are received, consumers emit events corresponding to the commands that were passed to the `queue()` call.
 
-### consumer.on command, handler
+### consumer.on(command, handler)
 
 To handle requests for a given `command`, you should listen for the corresponding event on the consumer.
 
 If a payload was sent with the request, the handler will be called with `(payload, callback)`, and if not, it will be called just with `(callback)`.
 
-The event handler that you supply should do whatever work is necessary, and then (optionally) call the callback.
+The event handler that you supply should do whatever work is necessary, and then (optionally) call the callback. If you choose not to call the callback, the consumer won't announce any results.
 
 # License (MIT)
 
