@@ -26,7 +26,7 @@ class Consumer extends Base
 					response = {id: request.id}
 					if err?    then response.err = err
 					if result? then response.result = result
-					@redis.data.publish @key(@channel, 'response'), @pack(response)
+					@redis.data.publish @key(@channel, 'response', request.id), @pack(response)
 					
 				@emit.apply(this, args)
 				process.nextTick(next)
