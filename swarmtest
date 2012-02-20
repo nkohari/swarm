@@ -1,0 +1,18 @@
+#!/usr/bin/env ./node_modules/coffee-script/bin/coffee
+
+swarm = require './src'
+
+swarm.configure
+	namespace: 'test'
+
+producer = swarm.createProducer()
+consumer = swarm.createConsumer('add')
+
+consumer.on 'request', (items, callback) ->
+	console.log "doing the work"
+	sum = 0
+	sum += item for item in items
+	callback null, sum
+
+producer.queue 'add', [2, 3, 4], (err, result) ->
+	console.log "The result was #{result}"
