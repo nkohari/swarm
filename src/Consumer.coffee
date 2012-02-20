@@ -16,13 +16,16 @@ class Consumer extends Base
 		next = () =>
 			@redis.data.rpop @queueKey, (err, data) =>
 				return if err?
+				
 				request = @unpack(data)
 				return unless request?
 				
 				args = [request.command]
 				if request.payload? then args.push(request.payload)
 				args.push (err, result) =>
-					response = {id: request.id, err: err, result: result}
+					response = {id: request.id}
+					if err?    then response.err = err
+					if result? then response.result = result
 					@redis.data.publish @key(@channel, 'response'), @pack(response)
 					
 				@emit.apply(this, args)
