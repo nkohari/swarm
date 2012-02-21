@@ -5,6 +5,8 @@ class Producer extends Base
 	
 	constructor: (config) ->
 		super(config)
+		@id = uuid.v4()
+		@redis.events.subscribe @key('response', @id)
 		@callbacks = {}
 	
 	queue: (args...) ->
@@ -16,11 +18,11 @@ class Producer extends Base
 		request = {id: uuid.v4(), command: command, payload: payload}
 		
 		if callback?
-			@redis.events.subscribe @key(channel, 'response', request.id)
+			request.replyTo = @id
 			@callbacks[request.id] = callback
 			
 		@redis.data.lpush @key(channel), @pack(request)
-		@redis.data.publish @key(channel, 'request'), request.id
+		@redis.data.publish @key(channel, 'request'), ''
 	
 	onMessage: (channel, data) =>
 		response = @unpack(data)
@@ -29,7 +31,6 @@ class Producer extends Base
 		if callback?
 			callback(response.err, response.result)
 			delete @callbacks[response.id]
-			@redis.events.unsubscribe channel
 			
 		event = if response.err? then 'failure' else 'success'
 		@emit event, response

@@ -22,11 +22,11 @@ class Consumer extends Base
 				
 				args = [request.command]
 				if request.payload? then args.push(request.payload)
-				args.push (err, result) =>
+				if request.replyTo? then args.push (err, result) =>
 					response = {id: request.id}
 					if err?    then response.err = err
 					if result? then response.result = result
-					@redis.data.publish @key(@channel, 'response', request.id), @pack(response)
+					@redis.data.publish @key('response', request.replyTo), @pack(response)
 					
 				@emit.apply(this, args)
 				process.nextTick(next)
