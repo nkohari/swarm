@@ -63,11 +63,14 @@ When requests are received, consumers emit events corresponding to the commands 
 
 ### consumer.on(command, handler)
 
-To handle requests for a given `command`, you should listen for the corresponding event on the consumer.
+To handle requests for a given `command`, you should listen for the corresponding event on the consumer. The handler is called in one of four ways:
 
-If a payload was sent with the request, the handler will be called with `(payload, callback)`, and if not, it will be called just with `(callback)`.
+- If a payload and a callback was sent with the request, the handler will be called with `(payload, callback)`.
+- If only a payload was passed, it will be called with `(payload)`.
+- If only a callback was sent, it will be called with `(callback)`.
+- Finally, if neither a payload nor a callback was sent, it will be called with no arguments.
 
-The event handler that you supply should do whatever work is necessary, and then (optionally) call the callback. If you choose not to call the callback, the consumer won't announce any results.
+The event handler that you supply should do whatever work is necessary, and then call the callback if one was supplied. If you choose not to call the callback, the consumer won't announce any results.
 
 # License (MIT)
 
