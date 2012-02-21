@@ -6,19 +6,21 @@ __NOTE: I JUST WROTE THIS. IT IS NOT PRODUCTION-QUALITY. PLEASE DO NOT USE IT IN
 
 Here's a simple example, with one producer and one consumer:
 
-	swarm = require './swarm'
+```coffeescript
+swarm = require './swarm'
 	
-	producer = swarm.createProducer()
-	consumer = swarm.createConsumer('math')
+producer = swarm.createProducer()
+consumer = swarm.createConsumer('math')
 	
-	consumer.on 'add', (items, callback) ->
-		sum = 0
-		sum += item for item in items
-		callback(null, sum)
+consumer.on 'add', (items, callback) ->
+	sum = 0
+	sum += item for item in items
+	callback(null, sum)
 		
-	producer.queue 'math', 'add', [2, 3, 4], (err, result) ->
-		if err? then console.log "The request failed: #{err}"
-		else console.log "The result was #{result}"
+producer.queue 'math', 'add', [2, 3, 4], (err, result) ->
+	if err? then console.log "The request failed: #{err}"
+	else console.log "The result was #{result}"
+```
 
 With each call to `queue()`, the producer adds the request to a FIFO queue via `LPUSH` and executes a corresponding `PUBLISH` to announce to consumers that new work has arrived. When consumers receive this message they `RPOP` the request from the queue and emit an event with the request payload and a callback.
 
