@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Swarm by nkohari</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Swarm</h1>
+        <p>Redis-backed job broker a la Resque</p>
+        <p class="view"><a href="https://github.com/nkohari/swarm">View the Project on GitHub <small>nkohari/swarm</small></a></p>
+        <ul>
+          <li><a href="https://github.com/nkohari/swarm/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/nkohari/swarm/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/nkohari/swarm">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <p>Swarm is a simple job queue backed by Redis. It's a lot like <a href="https://github.com/defunkt/resque">Resque</a>, but has support for bi-directional communication between producers and consumers. Also, rather than have consumers poll for new jobs, it uses Redis pub/sub to announce new requests and responses.</p>
+
+<p><strong>NOTE: I JUST WROTE THIS. IT IS NOT PRODUCTION-QUALITY. PLEASE DO NOT USE IT IN ANY MISSLE-CONTROL SYSTEMS.</strong></p>
+
+<h1>Example</h1>
+
+<p>Here's a simple example, with one producer and one consumer:</p>
+
+<div class="highlight"><pre><span class="nv">swarm = </span><span class="nx">require</span> <span class="s">'./swarm'</span>
+
+<span class="nv">producer = </span><span class="nx">swarm</span><span class="p">.</span><span class="nx">createProducer</span><span class="p">()</span>
+<span class="nv">consumer = </span><span class="nx">swarm</span><span class="p">.</span><span class="nx">createConsumer</span><span class="p">(</span><span class="s">'math'</span><span class="p">)</span>
+
+<span class="nx">consumer</span><span class="p">.</span><span class="kc">on</span> <span class="s">'add'</span><span class="p">,</span> <span class="nf">(items, callback) -&gt;</span>
+    <span class="nv">sum = </span><span class="mi">0</span>
+    <span class="nx">sum</span> <span class="o">+=</span> <span class="nx">item</span> <span class="k">for</span> <span class="nx">item</span> <span class="k">in</span> <span class="nx">items</span>
+    <span class="nx">callback</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="nx">sum</span><span class="p">)</span>
+
+<span class="nx">producer</span><span class="p">.</span><span class="nx">queue</span> <span class="s">'math'</span><span class="p">,</span> <span class="s">'add'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="nf">(err, result) -&gt;</span>
+    <span class="k">if</span> <span class="nx">err</span><span class="o">?</span> <span class="k">then</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span> <span class="s">"The request failed: </span><span class="si">#{</span><span class="nx">err</span><span class="si">}</span><span class="s">"</span>
+    <span class="k">else</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span> <span class="s">"The result was </span><span class="si">#{</span><span class="nx">result</span><span class="si">}</span><span class="s">"</span>
+</pre></div>
+
+<p>With each call to <code>queue()</code>, the producer adds the request to a FIFO queue via <code>LPUSH</code> and executes a corresponding <code>PUBLISH</code> to announce to consumers that new work has arrived. When consumers receive this message they <code>RPOP</code> the request from the queue and emit an event with the request payload and a callback.</p>
+
+<p>Your consuming code should subscribe to the <code>request</code> event on the consumer, perform the work, and (optionally) pass the result to the callback when complete. If you call the callback, the consumer will <code>PUBLISH</code> a message containing the result. Producers listen for this result message and trigger the callback provided during the original call to <code>queue()</code>.</p>
+
+<p>When a consumer receives an indication that new requests are queued, it will continue trying to <code>RPOP</code> requests until the queue is empty or an error occurs.</p>
+
+<h1>API</h1>
+
+<h2>swarm.configure(options)</h2>
+
+<p>You can call this function to configure global options. The options are:</p>
+
+<ul>
+<li>
+<code>host</code>: The hostname or IP address of the Redis server <em>(default: localhost)</em>
+</li>
+<li>
+<code>port</code>: The port number of the Redis server <em>(default: 6379)</em>
+</li>
+<li>
+<code>namespace</code>: A string to distinguish your swarm from others that are using the same Redis server. <em>(default: 'swarm')</em>
+</li>
+</ul><h2>swarm.createProducer()</h2>
+
+<p>Creates a producer, which can queue requests.</p>
+
+<h2>swarm.createConsumer(channel)</h2>
+
+<p>Creates a consumer, which will announce requests received on the specified channel.</p>
+
+<h2>Producer Functions</h2>
+
+<p>Producers queue requests to be completed by one or more consumers. One producer can queue requests on any number of channels.</p>
+
+<h3>producer.queue(channel, command, [payload], [callback])</h3>
+
+<p>This function will queue a request for processing by one or more consumers.</p>
+
+<ul>
+<li>
+<code>channel</code>: The channel to publish the request to. This is just a general topic that can be used to group consumer functionality.</li>
+<li>
+<code>command</code>: The command to execute, like a function call. This will be the event emitted by the consumer.</li>
+<li>
+<code>payload</code>: The (optional) payload to pass with the request.</li>
+<li>
+<code>callback</code>: The (optional) callback to execute when a response is received. Callbacks use the typical Node form of <code>(err, result)</code>. If you don't supply a callback, the producer won't <code>SUBSCRIBE</code> to any results.</li>
+</ul><h2>Consumer Functions</h2>
+
+<p>When requests are received, consumers emit events corresponding to the commands that were passed to the <code>queue()</code> call.</p>
+
+<h3>consumer.on(command, handler)</h3>
+
+<p>To handle requests for a given <code>command</code>, you should listen for the corresponding event on the consumer. The handler is called in one of four ways:</p>
+
+<ul>
+<li>If a payload and a callback was sent with the request, the handler will be called with <code>(payload, callback)</code>.</li>
+<li>If only a payload was passed, it will be called with <code>(payload)</code>.</li>
+<li>If only a callback was sent, it will be called with <code>(callback)</code>.</li>
+<li>Finally, if neither a payload nor a callback was sent, it will be called with no arguments.</li>
+</ul><p>The event handler that you supply should do whatever work is necessary, and then call the callback if one was supplied. If you choose not to call the callback, the consumer won't announce any results.</p>
+
+<h1>License (MIT)</h1>
+
+<p>Copyright (c) 2012 Nate Kohari.</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+      </section>
+    </div>
+    <footer>
+      <p>Project maintained by <a href="https://github.com/nkohari">nkohari</a></p>
+      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
